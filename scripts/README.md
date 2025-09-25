@@ -56,3 +56,11 @@ bitrix24-docs index
 ```
 
 Создаёт файл `data/index/simple_index.json` со сводной информацией по нормализованным документам. Параметр `--limit` ограничивает количество записей, попадающих в индекс.
+
+## Запуск полного пайплайна
+
+```bash
+bitrix24-docs pipeline --max-pages 150 --max-depth 3
+```
+
+Команда последовательно выполняет `crawl`, `normalize` и `index`. Опциональные флаги `--skip-*` позволяют выключать этапы, `--normalize-force` пересоздаёт Markdown, `--index-limit` ограничивает итоговый список. Manifest по умолчанию сохраняется в `data/raw/manifest.json`.
