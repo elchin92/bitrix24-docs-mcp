@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from typing import Optional
+from typing import Iterable, Optional
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -33,6 +33,7 @@ class FetchResult:
     status_code: int
     content: str
     title: Optional[str] = None
+    links: tuple[str, ...] = ()
 
 
 class BitrixDocumentationFetcher:
@@ -53,7 +54,14 @@ class BitrixDocumentationFetcher:
         response.raise_for_status()
         text = response.text
         title = _extract_title(text)
-        return FetchResult(url=url, status_code=response.status_code, content=text, title=title)
+        links = tuple(_extract_links(text, url))
+        return FetchResult(
+            url=url,
+            status_code=response.status_code,
+            content=text,
+            title=title,
+            links=links,
+        )
 
     async def check_reachability(self) -> bool:
         try:
@@ -76,6 +84,28 @@ def _extract_title(html_text: str) -> Optional[str]:
     if h1 and h1.text:
         return h1.text.strip()
     return None
+
+
+def _extract_links(html_text: str, source_url: str) -> Iterable[str]:
+    """Извлекает абсолютные ссылки на документы Bitrix из HTML."""
+
+    soup = BeautifulSoup(html_text, "lxml")
+    links: set[str] = set()
+    for tag in soup.find_all("a", href=True):
+        href = tag["href"].strip()
+        if not href or href.startswith("#"):
+            continue
+        if any(href.startswith(prefix) for prefix in ("mailto:", "javascript:", "tel:")):
+            continue
+        absolute = urljoin(source_url, href)
+        if ensure_same_host(absolute):
+            links.add(_strip_fragment(absolute))
+    return sorted(links)
+
+
+def _strip_fragment(url: str) -> str:
+    parsed = urlparse(url)
+    return parsed._replace(fragment="").geturl()
 
 
 def ensure_same_host(url: str, base: str = BASE_URL) -> bool:
