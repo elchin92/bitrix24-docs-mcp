@@ -2,9 +2,14 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
+
+import express from 'express';
+import cors from 'cors';
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
 import type { ZodRawShape } from 'zod';
 
@@ -154,6 +159,16 @@ async function createServer(): Promise<void> {
     return;
   }
 
+  const transportMode = process.env.BITRIX24_MCP_TRANSPORT ?? 'stdio';
+
+  if (transportMode === 'http') {
+    await startHttpServer(docsIndex, indexPath);
+  } else {
+    await startStdioServer(docsIndex, indexPath);
+  }
+}
+
+function createMcpServer(docsIndex: BitrixDocsIndex): McpServer {
   const mcpServer = new McpServer(
     {
       name: 'bitrix24-docs-mcp',
@@ -161,7 +176,11 @@ async function createServer(): Promise<void> {
     },
     {
       instructions:
-        'Используйте инструменты `bitrix_docs_search` и `bitrix_docs_fetch` для работы с документацией Bitrix24.',
+        'Используйте инструменты `bitrix_docs_search` и `bitrix_docs_fetch` для работы с документацией Bitrix24. Документы также доступны как ресурсы с URI `bitrix24-docs://docs/<slug>`.',
+      capabilities: {
+        resources: {},
+        tools: {},
+      },
     },
   );
 
@@ -326,12 +345,72 @@ async function createServer(): Promise<void> {
     );
   }
 
+  return mcpServer;
+}
+
+async function startStdioServer(docsIndex: BitrixDocsIndex, indexPath: string): Promise<void> {
+  const mcpServer = createMcpServer(docsIndex);
   const transport = new StdioServerTransport();
   await mcpServer.connect(transport);
   // eslint-disable-next-line no-console
   console.log(
-    `Bitrix24 MCP сервер запущен. Индекс: ${indexPath}. Экспортировано ресурсов: ${resourceEntries.length}`,
+    `Bitrix24 MCP сервер (stdio) запущен. Индекс: ${indexPath}. Экспортировано ресурсов: ${docsIndex.getEntries().length}`,
   );
+}
+
+async function startHttpServer(docsIndex: BitrixDocsIndex, indexPath: string): Promise<void> {
+  const app = express();
+  app.use(express.json({ limit: '10mb' }));
+  app.use(cors());
+
+  const pathPrefix = process.env.BITRIX24_MCP_HTTP_PATH ?? '/mcp';
+  const port = Number.parseInt(process.env.BITRIX24_MCP_HTTP_PORT ?? '8000', 10);
+
+  app.post(pathPrefix, async (req, res) => {
+    const server = createMcpServer(docsIndex);
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+    });
+
+    try {
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    } catch (error) {
+      console.error('Ошибка обработки HTTP-запроса MCP:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32603,
+            message: 'Internal server error',
+          },
+          id: null,
+        });
+      }
+    } finally {
+      res.on('close', () => {
+        void transport.close();
+        void server.close();
+      });
+    }
+  });
+
+  app.all(pathPrefix, (req, res) => {
+    res.status(405).json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32000,
+        message: 'Method not allowed',
+      },
+      id: null,
+    });
+  });
+
+  app.listen(port, () => {
+    console.log(
+      `Bitrix24 MCP сервер (HTTP) запущен на порту ${port}, путь ${pathPrefix}. Индекс: ${indexPath}. Ресурсов: ${docsIndex.getEntries().length}`,
+    );
+  });
 }
 
 createServer().catch((error) => {

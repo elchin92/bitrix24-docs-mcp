@@ -36,3 +36,17 @@ bitrix24-docs index
 ```
 
 Путь к индексу можно переопределить переменной окружения `BITRIX24_MCP_INDEX_PATH`.
+
+## Режимы запуска
+
+- `BITRIX24_MCP_TRANSPORT=stdio` — запуск по умолчанию, взаимодействие через stdin/stdout.
+- `BITRIX24_MCP_TRANSPORT=http` — сервер будет слушать HTTP-запросы (по умолчанию порт `8000`, путь `/mcp`). Дополнительно можно настроить `BITRIX24_MCP_HTTP_PORT` и `BITRIX24_MCP_HTTP_PATH`.
+
+Пример запуска HTTP-режима:
+
+```bash
+BITRIX24_MCP_TRANSPORT=http \
+BITRIX24_MCP_HTTP_PORT=8080 \
+BITRIX24_MCP_INDEX_PATH=../data/index/simple_index.json \
+npm run start
+```

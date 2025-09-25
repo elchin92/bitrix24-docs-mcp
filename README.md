@@ -74,6 +74,22 @@ npm run start  # использует STDIO транспорт
 
 По умолчанию сервер ищет индекс по пути `../data/index/simple_index.json`. Используйте переменную `BITRIX24_MCP_INDEX_PATH`, чтобы указать альтернативный файл.
 
+#### Режимы транспорта
+
+- `BITRIX24_MCP_TRANSPORT=stdio` — режим по умолчанию, взаимодействие через стандартные потоки.
+- `BITRIX24_MCP_TRANSPORT=http` — поднимает HTTP-эндпоинт со [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#streamable-http`). Дополнительные переменные:
+  - `BITRIX24_MCP_HTTP_PORT` (по умолчанию `8000`).
+  - `BITRIX24_MCP_HTTP_PATH` (по умолчанию `/mcp`).
+
+Пример запуска HTTP-сервера:
+
+```bash
+BITRIX24_MCP_TRANSPORT=http \
+BITRIX24_MCP_HTTP_PORT=8080 \
+BITRIX24_MCP_INDEX_PATH=../data/index/simple_index.json \
+npm run start
+```
+
 ### 4. Подключение к MCP Inspector/IDE
 
 Пример конфигурации для MCP Inspector или VS Code:
@@ -94,11 +110,27 @@ npm run start  # использует STDIO транспорт
 
 Сервер автоматически публикует документы как ресурсы с URI вида `bitrix24-docs://docs/<slug>`. Их можно просматривать через `resources/list` и `resources/read`, что соответствует рекомендациям из `doc/Specification.md` по экспонированию контента в виде ресурсов.
 
+### 6. Docker
+
+```bash
+docker build -t bitrix24-mcp .
+docker run --rm \
+  -p 8000:8000 \
+  -e BITRIX24_MCP_TRANSPORT=http \
+  bitrix24-mcp
+```
+
+Контейнер при запуске прогоняет ETL-пайплайн (`bitrix24-docs pipeline`), формирует индекс в `/app/data/index/` и поднимает HTTP-эндпоинт на порту `8000`. Для повторного запуска с уже подготовленными данными можно смонтировать volume или установить `BITRIX24_SKIP_PIPELINE=true`.
+Дополнительные переменные окружения:
+
+- `BITRIX24_PIPELINE_MAX_PAGES`, `BITRIX24_PIPELINE_MAX_DEPTH` — управление глубиной обхода.
+- `BITRIX24_SKIP_BUILD=true` — пропустить сборку TypeScript (если `dist/` смонтирован заранее).
+
 ## Следующие шаги
 
 - добавить автотесты для ETL-утилит и MCP-сервера, настроить CI;
 - проработать требования безопасности (хранение ключей, rate limiting, логирование);
-- подготовить публичный HTTP-endpoint и документацию на английском для широкой аудитории;
+- доработать HTTP-режим (аутентификация, rate limiting) и подготовить документацию на английском для широкой аудитории;
 - вынести вспомогательную папку `doc/` из релизной версии репозитория.
 
 ## Как участвовать
