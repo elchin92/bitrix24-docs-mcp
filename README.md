@@ -126,9 +126,32 @@ docker run --rm \
 - `BITRIX24_PIPELINE_MAX_PAGES`, `BITRIX24_PIPELINE_MAX_DEPTH` — управление глубиной обхода.
 - `BITRIX24_SKIP_BUILD=true` — пропустить сборку TypeScript (если `dist/` смонтирован заранее).
 
+## Тестирование
+
+- Python ETL:
+
+  ```bash
+  cd scripts
+  python -m venv .venv
+  source .venv/bin/activate
+  pip install -e .[dev]
+  PYTHONPATH=src pytest
+  ```
+
+- MCP сервер (Node.js):
+
+  ```bash
+  cd server
+  npm install
+  npm run build
+  npm run test -- --run
+  ```
+
+CI-конвейер (`.github/workflows/ci.yml`) прогоняет оба набора тестов при каждом push/PR.
+
 ## Следующие шаги
 
-- добавить автотесты для ETL-утилит и MCP-сервера, настроить CI;
+- расширить покрытие автотестами для ETL и MCP (базовые тесты и CI уже подключены);
 - проработать требования безопасности (хранение ключей, rate limiting, логирование);
 - доработать HTTP-режим (аутентификация, rate limiting) и подготовить документацию на английском для широкой аудитории;
 - вынести вспомогательную папку `doc/` из релизной версии репозитория.

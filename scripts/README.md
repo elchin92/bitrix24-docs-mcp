@@ -64,3 +64,14 @@ bitrix24-docs pipeline --max-pages 150 --max-depth 3
 ```
 
 Команда последовательно выполняет `crawl`, `normalize` и `index`. Опциональные флаги `--skip-*` позволяют выключать этапы, `--normalize-force` пересоздаёт Markdown, `--index-limit` ограничивает итоговый список. Manifest по умолчанию сохраняется в `data/raw/manifest.json`.
+
+## Тестирование
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .[dev]
+PYTHONPATH=src pytest
+```
+
+Тесты используют изолированные временные каталоги и не затрагивают реальные данные в `data/`.

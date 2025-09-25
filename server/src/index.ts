@@ -168,7 +168,10 @@ async function createServer(): Promise<void> {
   }
 }
 
-function createMcpServer(docsIndex: BitrixDocsIndex): McpServer {
+export function createMcpServer(docsIndex: Pick<
+  BitrixDocsIndex,
+  'getEntries' | 'search' | 'getMarkdown' | 'getBySlugOrUrl'
+>): McpServer {
   const mcpServer = new McpServer(
     {
       name: 'bitrix24-docs-mcp',
@@ -413,7 +416,9 @@ async function startHttpServer(docsIndex: BitrixDocsIndex, indexPath: string): P
   });
 }
 
-createServer().catch((error) => {
-  console.error('Критическая ошибка сервера:', error);
-  process.exit(1);
-});
+if (process.env.NODE_ENV !== 'test') {
+  createServer().catch((error) => {
+    console.error('Критическая ошибка сервера:', error);
+    process.exit(1);
+  });
+}
