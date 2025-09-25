@@ -1,0 +1,26 @@
+[project]
+name = "bitrix24-docs-etl"
+version = "0.0.1"
+description = "Утилиты для загрузки и индексирования документации Bitrix24"
+authors = [{name = "Bitrix24 MCP Team"}]
+requires-python = ">=3.10"
+dependencies = [
+  "httpx>=0.27,<0.28",
+  "beautifulsoup4>=4.12,<5",
+  "lxml>=5.2,<6",
+  "click>=8.1,<9",
+  "rich>=13.7,<14"
+]
+
+[project.scripts]
+bitrix24-docs = "bitrix24_docs_etl.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.23,<1"
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

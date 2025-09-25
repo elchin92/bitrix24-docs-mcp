@@ -1,0 +1,16 @@
+# Артефакты данных
+/data/raw/
+/data/processed/
+/data/index/
+
+# Зависимости и кэш
+node_modules/
+.env
+*.log
+__pycache__/
+*.pyc
+
+# Иде/служебные файлы
+.vscode/
+.idea/
+.DS_Store
