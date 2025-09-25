@@ -27,3 +27,32 @@ bitrix24-docs check --log INFO
 ```
 
 Команда выводит статус соединения с `https://apidocs.bitrix24.ru/` и проверяет `robots.txt`. Флаг `--json` возвращает результат в JSON, `--save` сохраняет robots.txt в файл.
+
+## Обход и выгрузка страниц
+
+```bash
+bitrix24-docs crawl --max-pages 50 --max-depth 2 --save --manifest ../data/raw/manifest.json
+```
+
+Параметры:
+- `--max-pages` — ограничение на количество страниц.
+- `--max-depth` — глубина обхода ссылок (0 — только стартовая страница).
+- `--save` — сохраняет HTML и метаданные в `data/raw/`.
+- `--manifest` — путь для JSON с описанием сохранённых страниц.
+- `--json` — выводит список найденных страниц без сохранения файлов.
+
+## Нормализация HTML → Markdown
+
+```bash
+bitrix24-docs normalize --limit 20
+```
+
+Команда читает HTML из `data/raw/` и создаёт Markdown-версии в `data/processed/markdown/` вместе с метаданными в `data/processed/meta/`. Флаг `--force` пересоздаёт уже существующие записи.
+
+## Построение базового индекса
+
+```bash
+bitrix24-docs index
+```
+
+Создаёт файл `data/index/simple_index.json` со сводной информацией по нормализованным документам. Параметр `--limit` ограничивает количество записей, попадающих в индекс.
