@@ -5,6 +5,9 @@
 
 # Зависимости и кэш
 node_modules/
+.npm/
+dist/
+/server/dist/
 .env
 *.log
 __pycache__/
