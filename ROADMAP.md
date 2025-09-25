@@ -23,6 +23,7 @@
 - [x] Выбрать SDK (TypeScript) и транспорт (`stdio` для локальной отладки).
 - [x] Реализовать инструмент `bitrix_docs_search` (см. схемы в `doc/Schema_Reference.md`).
 - [x] Добавить инструмент `bitrix_docs_fetch`, возвращающий Markdown и метаданные.
+- [x] Экспортировать документы как ресурсы (`resources/list` + `resources/read`).
 - [ ] Учесть требования безопасности и согласия из `doc/Specification.md` (раздел Security and Trust & Safety) и задокументировать решения.
 - [ ] Написать автотесты на ответы сервера.
 

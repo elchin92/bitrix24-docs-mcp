@@ -93,6 +93,10 @@ class BitrixDocsIndex {
     return await fs.readFile(markdownPath, 'utf-8');
   }
 
+  getEntries(): IndexEntry[] {
+    return [...this.entries];
+  }
+
   getBySlugOrUrl(identifier: string): IndexEntry | undefined {
     const trimmed = identifier.trim();
     if (!trimmed) {
@@ -124,6 +128,16 @@ class BitrixDocsIndex {
     }
     return source.slice(0, 160).replace(/\s+/g, ' ');
   }
+}
+
+function formatDocument(entry: IndexEntry, body: string): string {
+  const headerLines = [
+    `# ${entry.title ?? entry.slug}`,
+    `Источник: ${entry.url}`,
+    `Получено: ${entry.retrieved_at ?? 'неизвестно'}`,
+    '',
+  ];
+  return [...headerLines, body].join('\n');
 }
 
 async function createServer(): Promise<void> {
@@ -250,12 +264,11 @@ async function createServer(): Promise<void> {
 
       try {
         const markdown = await docsIndex.getMarkdown(entry);
-        const header = `# ${entry.title ?? entry.slug}\nИсточник: ${entry.url}\nПолучено: ${entry.retrieved_at ?? 'неизвестно'}\n\n`;
         return {
           content: [
             {
               type: 'text' as const,
-              text: header + markdown,
+              text: formatDocument(entry, markdown),
             },
           ],
         };
@@ -272,10 +285,53 @@ async function createServer(): Promise<void> {
     },
   );
 
+  const resourceEntries = docsIndex.getEntries();
+  for (const entry of resourceEntries) {
+    const resourceUri = `bitrix24-docs://docs/${entry.slug}`;
+    const resourceName = `bitrix24-doc-${entry.slug}`;
+
+    mcpServer.resource(
+      resourceName,
+      resourceUri,
+      {
+        title: entry.title ?? entry.slug,
+        description: `Документация Bitrix24. Исходный URL: ${entry.url}`,
+        mimeType: 'text/markdown',
+      },
+      async () => {
+        try {
+          const markdown = await docsIndex.getMarkdown(entry);
+          return {
+            contents: [
+              {
+                uri: resourceUri,
+                mimeType: 'text/markdown',
+                text: formatDocument(entry, markdown),
+              },
+            ],
+          };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          return {
+            contents: [
+              {
+                uri: resourceUri,
+                mimeType: 'text/plain',
+                text: `Ошибка чтения ресурса: ${message}`,
+              },
+            ],
+          };
+        }
+      },
+    );
+  }
+
   const transport = new StdioServerTransport();
   await mcpServer.connect(transport);
   // eslint-disable-next-line no-console
-  console.log(`Bitrix24 MCP сервер запущен. Индекс: ${indexPath}`);
+  console.log(
+    `Bitrix24 MCP сервер запущен. Индекс: ${indexPath}. Экспортировано ресурсов: ${resourceEntries.length}`,
+  );
 }
 
 createServer().catch((error) => {
