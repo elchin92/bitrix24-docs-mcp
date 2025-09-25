@@ -5,7 +5,7 @@ description = "Утилиты для загрузки и индексирова�
 authors = [{name = "Bitrix24 MCP Team"}]
 requires-python = ">=3.10"
 dependencies = [
-  "httpx>=0.27,<0.28",
+  "httpx>=0.27,<0.29",
   "beautifulsoup4>=4.12,<5",
   "lxml>=5.2,<6",
   "click>=8.1,<9",

@@ -24,6 +24,7 @@ npm install
 - `npm run dev` — запуск сервера в режиме hot-reload (использует `tsx`).
 - `npm run start` — запуск собранной версии (`dist/index.js`).
 - `npm run lint` / `npm run format` — статический анализ и проверка форматирования.
+- `npm run test -- --run` — unit-тесты (Vitest).
 
 ## Зависимость от данных
 
