@@ -16,7 +16,7 @@ from . import fetch
 from .crawl import BitrixCrawler
 from .index import build_simple_index
 from .normalize import normalize_all
-from .storage import persist_fetch_results
+from .storage import DATA_DIR, persist_fetch_results
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ def crawl_command(max_pages: int, max_depth: int, output_json: bool, save: bool,
         if manifest:
             manifest.parent.mkdir(parents=True, exist_ok=True)
             manifest.write_text(json.dumps(stored_meta, ensure_ascii=False, indent=2), encoding="utf-8")
-        console.print(f"[green]Manifest записан в {manifest}")
+            console.print(f"[green]Manifest записан в {manifest}")
     if output_json:
         console.print_json(data=result.to_manifest())
     else:
@@ -108,6 +108,57 @@ def index_command(limit: int | None) -> None:
 
     stats = build_simple_index(limit=limit)
     console.print(f"[green]Создан индекс с {stats.documents} документами: {stats.output_path}")
+
+
+@cli.command("pipeline")
+@click.option("--max-pages", default=100, show_default=True, help="Максимум страниц для обхода")
+@click.option("--max-depth", default=2, show_default=True, help="Глубина обхода")
+@click.option("--manifest", type=click.Path(dir_okay=False, path_type=Path), help="Путь для manifest.json")
+@click.option("--skip-crawl", is_flag=True, help="Пропустить этап crawl")
+@click.option("--skip-normalize", is_flag=True, help="Пропустить этап normalize")
+@click.option("--skip-index", is_flag=True, help="Пропустить этап index")
+@click.option("--normalize-limit", type=int, help="Ограничить количество документов при нормализации")
+@click.option("--normalize-force", is_flag=True, help="Пересоздать нормализованные файлы")
+@click.option("--index-limit", type=int, help="Ограничить количество документов в индексе")
+def pipeline_command(
+    max_pages: int,
+    max_depth: int,
+    manifest: Optional[Path],
+    skip_crawl: bool,
+    skip_normalize: bool,
+    skip_index: bool,
+    normalize_limit: Optional[int],
+    normalize_force: bool,
+    index_limit: Optional[int],
+) -> None:
+    """Запускает связку crawl → normalize → index."""
+
+    manifest_path = manifest or (DATA_DIR / "raw" / "manifest.json")
+
+    if skip_crawl:
+        console.print("[yellow]Этап crawl пропущен")
+    else:
+        crawler = BitrixCrawler(max_pages=max_pages, max_depth=max_depth)
+        crawl_result = asyncio.run(crawler.crawl([None]))
+        stored_meta = persist_fetch_results(crawl_result.iter_fetch_results())
+        console.print(f"[green]Crawl завершён: сохранено страниц {len(stored_meta)}")
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(json.dumps(stored_meta, ensure_ascii=False, indent=2), encoding="utf-8")
+        console.print(f"[green]Manifest записан в {manifest_path}")
+
+    if skip_normalize:
+        console.print("[yellow]Этап normalize пропущен")
+    else:
+        stats = normalize_all(limit=normalize_limit, force=normalize_force)
+        console.print(
+            f"[green]Normalize завершён: создано {stats.processed}, пропущено {stats.skipped}, всего {stats.total}",
+        )
+
+    if skip_index:
+        console.print("[yellow]Этап index пропущен")
+    else:
+        stats = build_simple_index(limit=index_limit)
+        console.print(f"[green]Index завершён: документов {stats.documents}, файл {stats.output_path}")
 
 
 def main() -> None:
