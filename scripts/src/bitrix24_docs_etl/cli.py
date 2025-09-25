@@ -14,6 +14,8 @@ from rich.table import Table
 
 from . import fetch
 from .crawl import BitrixCrawler
+from .index import build_simple_index
+from .normalize import normalize_all
 from .storage import persist_fetch_results
 
 console = Console()
@@ -69,7 +71,7 @@ def crawl_command(max_pages: int, max_depth: int, output_json: bool, save: bool,
         if manifest:
             manifest.parent.mkdir(parents=True, exist_ok=True)
             manifest.write_text(json.dumps(stored_meta, ensure_ascii=False, indent=2), encoding="utf-8")
-            console.print(f"[green]Manifest записан в {manifest}")
+        console.print(f"[green]Manifest записан в {manifest}")
     if output_json:
         console.print_json(data=result.to_manifest())
     else:
@@ -81,6 +83,31 @@ def crawl_command(max_pages: int, max_depth: int, output_json: bool, save: bool,
             table.add_row(str(idx), page.url, page.title or "—")
         console.print(table)
         console.print(f"[green]Всего страниц: {len(result.pages)}")
+
+
+@cli.command("normalize")
+@click.option("--limit", type=int, help="Ограничить количество документов")
+@click.option("--force", is_flag=True, help="Пересоздать уже нормализованные файлы")
+def normalize_command(limit: int | None, force: bool) -> None:
+    """Конвертирует HTML из data/raw в Markdown и JSON."""
+
+    stats = normalize_all(limit=limit, force=force)
+    table = Table(title="Нормализация документации")
+    table.add_column("Метрика")
+    table.add_column("Значение")
+    table.add_row("Всего рассмотрено", str(stats.total))
+    table.add_row("Создано/обновлено", str(stats.processed))
+    table.add_row("Пропущено", str(stats.skipped))
+    console.print(table)
+
+
+@cli.command("index")
+@click.option("--limit", type=int, help="Ограничить количество документов в индексе")
+def index_command(limit: int | None) -> None:
+    """Строит простой JSON-индекс на основе нормализованных документов."""
+
+    stats = build_simple_index(limit=limit)
+    console.print(f"[green]Создан индекс с {stats.documents} документами: {stats.output_path}")
 
 
 def main() -> None:

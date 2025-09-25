@@ -40,3 +40,19 @@ bitrix24-docs crawl --max-pages 50 --max-depth 2 --save --manifest ../data/raw/m
 - `--save` — сохраняет HTML и метаданные в `data/raw/`.
 - `--manifest` — путь для JSON с описанием сохранённых страниц.
 - `--json` — выводит список найденных страниц без сохранения файлов.
+
+## Нормализация HTML → Markdown
+
+```bash
+bitrix24-docs normalize --limit 20
+```
+
+Команда читает HTML из `data/raw/` и создаёт Markdown-версии в `data/processed/markdown/` вместе с метаданными в `data/processed/meta/`. Флаг `--force` пересоздаёт уже существующие записи.
+
+## Построение базового индекса
+
+```bash
+bitrix24-docs index
+```
+
+Создаёт файл `data/index/simple_index.json` со сводной информацией по нормализованным документам. Параметр `--limit` ограничивает количество записей, попадающих в индекс.

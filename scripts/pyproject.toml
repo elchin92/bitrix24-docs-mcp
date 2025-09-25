@@ -9,7 +9,8 @@ dependencies = [
   "beautifulsoup4>=4.12,<5",
   "lxml>=5.2,<6",
   "click>=8.1,<9",
-  "rich>=13.7,<14"
+  "rich>=13.7,<14",
+  "markdownify>=0.13,<1"
 ]
 
 [project.scripts]
