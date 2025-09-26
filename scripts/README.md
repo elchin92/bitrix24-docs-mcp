@@ -1,77 +1,47 @@
-# Парсинг и индексация
+# Парсинг и индексация (опционально)
 
-Каталог для утилит на Python, которые скачивают, очищают и индексируют документацию Bitrix24.
+Каталог `scripts/` хранит Python-утилиты для сценариев, когда хочется локально закэшировать документацию Bitrix24 или построить собственный индекс (например, для офлайн-режима). Основной MCP-сервер теперь работает напрямую с GitHub (`bitrix24/b24restdocs`), поэтому запускать ETL не обязательно.
 
-Предполагаемые компоненты:
-- `fetch_docs.py` — загрузка HTML-страниц Bitrix24 (с учётом robots.txt и лимитов).
-- `normalize.py` — очистка разметки, конвертация в Markdown/JSON.
-- `build_index.py` — построение полнотекстового или векторного индекса.
+## Возможности CLI `bitrix24-docs`
 
-Результаты работы скриптов должны сохраняться в каталоге `data/`. При реализации важно документировать параметры и формат выходных файлов. Зависимости будут описаны в `pyproject.toml`.
+- `check` — проверяет доступность `https://apidocs.bitrix24.ru/`, скачивает `robots.txt`.
+- `crawl` — обходит сайт Bitrix24 и сохраняет HTML (используется по необходимости).
+- `normalize` — переводит HTML в Markdown и JSON.
+- `index` — строит простой JSON-индекс для локального поиска.
+- `pipeline` — объединяет этапы `crawl → normalize → index`.
+- `import-github` — быстро подтягивает готовые Markdown-файлы прямо из GitHub-репозитория документации (`bitrix24/b24restdocs` по умолчанию).
 
 ## Установка окружения
 
 ```bash
 cd scripts
-python -m venv .venv
-source .venv/bin/activate  # или .venv\Scripts\activate в Windows
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e .[dev]
 ```
 
-После установки можно запускать CLI-команды, которые будут добавлены в модуль `bitrix24_docs_etl`.
-
-## Проверка доступности источника
+## Примеры команд
 
 ```bash
-bitrix24-docs check --log INFO
-```
+# Проверка источника и сохранение robots.txt
+bitrix24-docs check --json --save robots.txt
 
-Команда выводит статус соединения с `https://apidocs.bitrix24.ru/` и проверяет `robots.txt`. Флаг `--json` возвращает результат в JSON, `--save` сохраняет robots.txt в файл.
+# Импорт Markdown из GitHub без обхода сайта
+bitrix24-docs import-github --branch master
 
-## Обход и выгрузка страниц
-
-```bash
-bitrix24-docs crawl --max-pages 50 --max-depth 2 --save --manifest ../data/raw/manifest.json
-```
-
-Параметры:
-- `--max-pages` — ограничение на количество страниц.
-- `--max-depth` — глубина обхода ссылок (0 — только стартовая страница).
-- `--save` — сохраняет HTML и метаданные в `data/raw/`.
-- `--manifest` — путь для JSON с описанием сохранённых страниц.
-- `--json` — выводит список найденных страниц без сохранения файлов.
-
-## Нормализация HTML → Markdown
-
-```bash
-bitrix24-docs normalize --limit 20
-```
-
-Команда читает HTML из `data/raw/` и создаёт Markdown-версии в `data/processed/markdown/` вместе с метаданными в `data/processed/meta/`. Флаг `--force` пересоздаёт уже существующие записи.
-
-## Построение базового индекса
-
-```bash
+# Построение индекса по локальному кэшу
 bitrix24-docs index
 ```
 
-Создаёт файл `data/index/simple_index.json` со сводной информацией по нормализованным документам. Параметр `--limit` ограничивает количество записей, попадающих в индекс.
-
-## Запуск полного пайплайна
-
-```bash
-bitrix24-docs pipeline --max-pages 150 --max-depth 3
-```
-
-Команда последовательно выполняет `crawl`, `normalize` и `index`. Опциональные флаги `--skip-*` позволяют выключать этапы, `--normalize-force` пересоздаёт Markdown, `--index-limit` ограничивает итоговый список. Manifest по умолчанию сохраняется в `data/raw/manifest.json`.
+Все файлы складываются в `scripts/data/` и не попадают в git (см. `.gitignore`).
 
 ## Тестирование
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .[dev]
 PYTHONPATH=src pytest
 ```
 
-Тесты используют изолированные временные каталоги и не затрагивают реальные данные в `data/`.
+Тесты используют временные каталоги, поэтому данные в `scripts/data/` не затрагиваются.

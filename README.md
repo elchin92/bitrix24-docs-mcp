@@ -1,167 +1,146 @@
 # Bitrix24 Documentation MCP Server (WIP)
 
-Проект нацелен на создание удалённого MCP-сервера, который по запросу ИИ-клиентов возвращает свежую документацию по Bitrix24 REST API. Репозиторий будет публичным, чтобы разработчики могли легко подключать сервер к своим агентам и IDE, аналогично тому, как работает [Microsoft Learn MCP Server](https://github.com/MicrosoftDocs/mcp).
+Проект предоставляет MCP-сервер, который в реальном времени обращается к документации Bitrix24 REST API в публичном репозитории [`bitrix24/b24restdocs`](https://github.com/bitrix24/b24restdocs). Цель — повторить подход [Microsoft Learn MCP Server](https://github.com/MicrosoftDocs/mcp), но для Bitrix24, чтобы любой разработчик мог подключить актуальные материалы к своим ИИ-агентам и IDE.
 
-> **Статус:** подготовлен локальный ETL-пайплайн (Python) и прототип MCP-сервера (TypeScript), следующий этап — тесты и подготовка публичного размещения.
+> **Статус:** TypeScript-сервер работает поверх GitHub API (инструменты `bitrix_docs_search` и `bitrix_docs_fetch`), добавлены базовые автотесты и пример конфигурации Codex. В каталоге `scripts/` хранится опциональный ETL для локального кэша и индексации.
 
-## Цели
+## Ключевые возможности
 
-- Собирать и нормализовать публичную документацию с `https://apidocs.bitrix24.ru/`.
-- Предоставлять MCP-инструмент для семантического/полнотекстового поиска по документации.
-- Давать возможность запрашивать полный текст документа по URL.
-- Подготовить публичный HTTP-endpoint, пригодный для использования в Copilot/Claude/VS Code (на следующем этапе после локального прототипа).
+- Поиск по документации Bitrix24 через GitHub Code Search без предварительного скачивания всего сайта.
+- Получение полного Markdown-файла по slug или GitHub URL.
+- Поддержка двух транспортов: STDIO (для локальных инструментов) и Streamable HTTP (для будущего публичного размещения).
+- Персонализируемый источник (`BITRIX24_GITHUB_REPO`) и поддержка GitHub токена (`BITRIX24_GITHUB_TOKEN`) для обхода лимитов.
+- Python-утилиты для офлайн-режима и построения пользовательских индексов.
 
-## Документы по MCP
+## Материалы по MCP
 
-Каталог `doc/` хранит вспомогательные материалы по MCP, которые используются во время разработки и не предназначены для конечных пользователей репозитория. Он будет очищен или вынесен в отдельный архив перед публичным релизом.
+Каталог `doc/` служит внутренним справочником и не предназначен для конечных пользователей. Перед публичным релизом он будет вынесен/очищен.
 
-- `doc/Documentation.md` — базовые понятия и архитектура MCP.
-- `doc/Specification.md` — формальные требования и протокол.
-- `doc/Schema_Reference.md` — описание доступных типов и схем.
-- `doc/Community.md` — рекомендации по коммуникациям и взаимодействию сообщества.
+- `doc/Documentation.md` — обзор протокола.
+- `doc/Specification.md` — формальные требования (JSON-RPC, инструменты, ресурсы).
+- `doc/Schema_Reference.md` — схемы типов.
+- `doc/Community.md` — best practices.
 
 ## Структура репозитория
 
 ```
 .
-├── doc/                # Официальная документация MCP (для справки)
-├── server/             # Исходный код MCP-сервера (TypeScript)
-├── scripts/            # Утилиты для парсинга и индексации (Python)
-├── data/               # Сырые и обработанные данные документации (в .gitignore)
-└── README.md           # Текущий файл
+├── doc/                # временные справочные материалы MCP
+├── server/             # исходники MCP-сервера (TypeScript)
+├── scripts/            # Python-утилиты ETL и индексатор
+├── docker/             # docker-контексты и entrypoint
+└── README.md
 ```
 
-Каталоги `server/`, `scripts/` и `data/` будут заполнены в последующих шагах.
-
-## План работ
-
-1. **Парсер документации** — реализовано: Python-CLI загружает HTML и сохраняет метаданные.
-2. **Индекс поиска** — реализовано: сборка базового JSON-индекса; исследуем переход на полнотекстовый/векторный.
-3. **MCP-сервер** — реализовано: локальный сервер на TypeScript с инструментами `bitrix_docs_search`, `bitrix_docs_fetch` и экспортом документов в виде MCP-ресурсов.
-4. **Тестирование** — в работе: планируется покрыть скрипты и сервер автотестами, проверить через MCP Inspector.
-5. **Публичный endpoint** — запланировано: хостинг, авторизация, безопасность, документация для пользователей.
-
-## Быстрый старт
-
-### 1. Подготовка Python-окружения
+## Запуск MCP-сервера
 
 ```bash
-cd scripts
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -e .[dev]
-```
-
-### 2. Формирование индекса документации
-
-```bash
-bitrix24-docs check               # убедиться, что источник доступен
-bitrix24-docs crawl --save        # сохранить HTML в data/raw
-bitrix24-docs normalize           # конвертировать в Markdown
-bitrix24-docs index               # создать data/index/simple_index.json
-```
-
-> Каталог `data/` не коммитится в git. При необходимости можно очистить его вручную.
-
-### 3. Сборка и запуск MCP-сервера
-
-```bash
-cd ../server
+cd server
 npm install
 npm run build
-npm run start  # использует STDIO транспорт
-```
-
-По умолчанию сервер ищет индекс по пути `../data/index/simple_index.json`. Используйте переменную `BITRIX24_MCP_INDEX_PATH`, чтобы указать альтернативный файл.
-
-#### Режимы транспорта
-
-- `BITRIX24_MCP_TRANSPORT=stdio` — режим по умолчанию, взаимодействие через стандартные потоки.
-- `BITRIX24_MCP_TRANSPORT=http` — поднимает HTTP-эндпоинт со [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#streamable-http`). Дополнительные переменные:
-  - `BITRIX24_MCP_HTTP_PORT` (по умолчанию `8000`).
-  - `BITRIX24_MCP_HTTP_PATH` (по умолчанию `/mcp`).
-
-Пример запуска HTTP-сервера:
-
-```bash
-BITRIX24_MCP_TRANSPORT=http \
-BITRIX24_MCP_HTTP_PORT=8080 \
-BITRIX24_MCP_INDEX_PATH=../data/index/simple_index.json \
+BITRIX24_GITHUB_REPO="bitrix24/b24restdocs" \
+BITRIX24_GITHUB_TOKEN="ghp_..." \  # опционально, но уменьшает риск rate limit
 npm run start
 ```
 
-### 4. Подключение к MCP Inspector/IDE
+Переменные окружения:
 
-Пример конфигурации для MCP Inspector или VS Code:
+- `BITRIX24_GITHUB_REPO` — репозиторий, откуда читается документация (по умолчанию `bitrix24/b24restdocs`).
+- `BITRIX24_GITHUB_TOKEN` — персональный токен GitHub (scope `public_repo`), повышает лимит запросов с 60 до 5 000 в час.
+- `BITRIX24_MCP_TRANSPORT` — `stdio` (по умолчанию) или `http`.
+- `BITRIX24_MCP_HTTP_PORT`, `BITRIX24_MCP_HTTP_PATH` — настройки HTTP-транспорта.
+
+Пример вызова инструмента через MCP Inspector:
 
 ```json
 {
-  "bitrix24-docs": {
-    "command": "node",
-    "args": ["/path/to/repo/server/dist/index.js"],
-    "transport": "stdio"
+  "name": "bitrix_docs_search",
+  "arguments": { "query": "CRM сделки", "limit": 3 }
+}
+```
+
+Ответ содержит заголовок, путь в репозитории, GitHub URL и сниппет. Полный текст доступен через `bitrix_docs_fetch`.
+
+## Конфигурация Codex CLI (`~/.codex/config.toml`)
+
+```toml
+[mcp_servers.bitrix24_docs_local]
+command = "node"
+args = ["/srv/mcp/bitrix24/server/dist/index.js"]
+
+[mcp_servers.bitrix24_docs_local.env]
+BITRIX24_MCP_TRANSPORT = "stdio"
+BITRIX24_GITHUB_REPO = "bitrix24/b24restdocs"
+# BITRIX24_GITHUB_TOKEN = "ghp_xxxxx"  # задайте, чтобы избежать rate limit GitHub
+```
+
+После перезапуска Codex можно запрашивать документы напрямую, например:
+
+```json
+{
+  "name": "bitrix_docs_fetch",
+  "arguments": {
+    "url": "https://github.com/bitrix24/b24restdocs/blob/master/api-reference/crm/deal/index.md"
   }
 }
 ```
 
-Рекомендуется задать системный промпт, напоминающий модели использовать инструменты `bitrix_docs_search` и `bitrix_docs_fetch` при работе с Bitrix24.
+Сервер вернёт заголовок, ссылку и весь Markdown-документ.
 
-### 5. Работа с ресурсами
+## Офлайн ETL (по желанию)
 
-Сервер автоматически публикует документы как ресурсы с URI вида `bitrix24-docs://docs/<slug>`. Их можно просматривать через `resources/list` и `resources/read`, что соответствует рекомендациям из `doc/Specification.md` по экспонированию контента в виде ресурсов.
-
-### 6. Docker
+Каталог `scripts/` содержит утилиты для случаев, когда нужен локальный кэш или собственный индекс:
 
 ```bash
-docker build -t bitrix24-mcp .
-docker run --rm \
-  -p 8000:8000 \
-  -e BITRIX24_MCP_TRANSPORT=http \
-  bitrix24-mcp
+cd scripts
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .[dev]
+
+# Проверить доступность источников
+bitrix24-docs check --json
+
+# Быстрый импорт Markdown из GitHub (без поиска)
+bitrix24-docs import-github --repo https://github.com/bitrix24/b24restdocs --branch master
+
+# Сконструировать простой индекс по локальному кэшу
+bitrix24-docs index
 ```
 
-Контейнер при запуске прогоняет ETL-пайплайн (`bitrix24-docs pipeline`), формирует индекс в `/app/data/index/` и поднимает HTTP-эндпоинт на порту `8000`. Для повторного запуска с уже подготовленными данными можно смонтировать volume или установить `BITRIX24_SKIP_PIPELINE=true`.
-Дополнительные переменные окружения:
-
-- `BITRIX24_PIPELINE_MAX_PAGES`, `BITRIX24_PIPELINE_MAX_DEPTH` — управление глубиной обхода.
-- `BITRIX24_SKIP_BUILD=true` — пропустить сборку TypeScript (если `dist/` смонтирован заранее).
+Все артефакты записываются в `scripts/data/` (каталог исключён из git).
 
 ## Тестирование
 
-- Python ETL:
-
-  ```bash
-  cd scripts
-  python -m venv .venv
-  source .venv/bin/activate
-  pip install -e .[dev]
-  PYTHONPATH=src pytest
-  ```
-
-- MCP сервер (Node.js):
-
+- **Node.js**
   ```bash
   cd server
   npm install
   npm run build
   npm run test -- --run
   ```
+- **Python**
+  ```bash
+  cd scripts
+  python3 -m venv .venv
+  source .venv/bin/activate
+  pip install -e .[dev]
+  PYTHONPATH=src pytest
+  ```
 
-CI-конвейер (`.github/workflows/ci.yml`) прогоняет оба набора тестов при каждом push/PR.
+CI (см. `.github/workflows/ci.yml`) запускает оба набора тестов при push и PR.
 
-## Следующие шаги
+## Планы и TODO
 
-- расширить покрытие автотестами для ETL и MCP (базовые тесты и CI уже подключены);
-- проработать требования безопасности (хранение ключей, rate limiting, логирование);
-- доработать HTTP-режим (аутентификация, rate limiting) и подготовить документацию на английском для широкой аудитории;
-- вынести вспомогательную папку `doc/` из релизной версии репозитория.
+- Кэширование ответов GitHub и обработка rate limit без ошибок.
+- Интеграционные тесты MCP с моками GitHub API.
+- Документация на английском и примеры для VS Code/Claude.
+- Расширенный HTTP-режим: авторизация, rate limiting, логирование.
+- Удаление временной папки `doc/` в публичной версии.
 
 ## Как участвовать
 
-- Предлагайте идеи и улучшения через issues/PR.
-- Следуйте рекомендациям из `doc/Community.md`.
-- При необходимости создавайте обсуждения (GitHub Discussions) для архитектурных решений.
+- Создавайте issues и PR с предложениями улучшений.
+- Соблюдайте рекомендации `doc/Community.md` при общении.
+- Обсуждайте значимые архитектурные изменения в GitHub Discussions.
 
-## Лицензия
-
-Лицензия будет определена после подготовки первой рабочей версии сервера.
+Лицензия будет определена перед первым релизом (в package.json указана MIT как базовый вариант).
