@@ -209,33 +209,45 @@ export function createMcpServer(docsIndex: Pick<
       inputSchema: searchInputShape,
     },
     async ({ query, limit }) => {
-      const results = docsIndex.search(query, limit ?? 5);
-      if (results.length === 0) {
+      try {
+        const results = docsIndex.search(query, limit ?? 5);
+        if (results.length === 0) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `По запросу "${query}" ничего не найдено. Попробуйте переформулировать запрос.`,
+              },
+            ],
+          };
+        }
+
+        const formatted = results
+          .map((result, index) => {
+            const { entry, snippet, score } = result;
+            return `${index + 1}. ${entry.title ?? 'Без названия'}\nURL: ${entry.url}\nСлаг: ${entry.slug}\nСниппет: ${snippet}\nСчёт: ${score}`;
+          })
+          .join('\n\n');
+
         return {
           content: [
             {
               type: 'text' as const,
-              text: `По запросу "${query}" ничего не найдено. Попробуйте переформулировать запрос.`,
+              text: formatted,
             },
           ],
         };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: error instanceof Error ? error.message : String(error),
+            },
+          ],
+          isError: true,
+        };
       }
-
-      const formatted = results
-        .map((result, index) => {
-          const { entry, snippet, score } = result;
-          return `${index + 1}. ${entry.title ?? 'Без названия'}\nURL: ${entry.url}\nСлаг: ${entry.slug}\nСниппет: ${snippet}\nСчёт: ${score}`;
-        })
-        .join('\n\n');
-
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: formatted,
-          },
-        ],
-      };
     },
   );
 
@@ -355,8 +367,7 @@ async function startStdioServer(docsIndex: BitrixDocsIndex, indexPath: string): 
   const mcpServer = createMcpServer(docsIndex);
   const transport = new StdioServerTransport();
   await mcpServer.connect(transport);
-  // eslint-disable-next-line no-console
-  console.log(
+  console.error(
     `Bitrix24 MCP сервер (stdio) запущен. Индекс: ${indexPath}. Экспортировано ресурсов: ${docsIndex.getEntries().length}`,
   );
 }
@@ -410,7 +421,7 @@ async function startHttpServer(docsIndex: BitrixDocsIndex, indexPath: string): P
   });
 
   app.listen(port, () => {
-    console.log(
+    console.error(
       `Bitrix24 MCP сервер (HTTP) запущен на порту ${port}, путь ${pathPrefix}. Индекс: ${indexPath}. Ресурсов: ${docsIndex.getEntries().length}`,
     );
   });

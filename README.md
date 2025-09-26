@@ -126,6 +126,27 @@ docker run --rm \
 - `BITRIX24_PIPELINE_MAX_PAGES`, `BITRIX24_PIPELINE_MAX_DEPTH` — управление глубиной обхода.
 - `BITRIX24_SKIP_BUILD=true` — пропустить сборку TypeScript (если `dist/` смонтирован заранее).
 
+### 7. Пример конфигурации Codex CLI (`~/.codex/config.toml`)
+
+```toml
+[mcp_servers.bitrix24_docs_local]
+command = "node"
+args = ["/srv/mcp/bitrix24/server/dist/index.js"]
+
+[mcp_servers.bitrix24_docs_local.env]
+BITRIX24_MCP_INDEX_PATH = "/srv/mcp/bitrix24/scripts/data/index/simple_index.json"
+BITRIX24_MCP_TRANSPORT = "stdio"
+```
+
+После обновления конфигурации перезапустите Codex CLI и используйте инструмент `bitrix_docs_search`, например:
+
+```json
+{
+  "name": "bitrix_docs_search",
+  "arguments": { "query": "торговый каталог", "limit": 3 }
+}
+```
+
 ## Тестирование
 
 - Python ETL:

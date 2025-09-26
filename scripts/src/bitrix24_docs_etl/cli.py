@@ -14,6 +14,7 @@ from rich.table import Table
 
 from . import fetch
 from .crawl import BitrixCrawler
+from .github_ingest import import_github_docs
 from .index import build_simple_index
 from .normalize import normalize_all
 from .storage import DATA_DIR, persist_fetch_results
@@ -159,6 +160,24 @@ def pipeline_command(
     else:
         stats = build_simple_index(limit=index_limit)
         console.print(f"[green]Index завершён: документов {stats.documents}, файл {stats.output_path}")
+
+
+@cli.command("import-github")
+@click.option(
+    "--repo",
+    "repo_url",
+    default="https://github.com/bitrix-tools/b24-rest-docs",
+    show_default=True,
+    help="URL репозитория с документацией",
+)
+@click.option("--branch", default="main", show_default=True)
+def import_github_command(repo_url: str, branch: str) -> None:
+    """Импортирует Markdown из официального репозитория документации Bitrix24."""
+
+    stats = import_github_docs(repo_url=repo_url, branch=branch)
+    console.print(
+        f"[green]Импортировано документов: {stats.imported} из {stats.repo_url}@{stats.branch}"
+    )
 
 
 def main() -> None:

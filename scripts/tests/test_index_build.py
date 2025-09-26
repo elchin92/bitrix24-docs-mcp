@@ -1,26 +1,8 @@
 import json
 from pathlib import Path
 
-import pytest
-
-import importlib
-
 import bitrix24_docs_etl.storage as storage
 from bitrix24_docs_etl.index import build_simple_index
-from bitrix24_docs_etl.storage import ensure_dirs
-
-
-@pytest.fixture(autouse=True)
-def isolation(tmp_path, monkeypatch):
-    monkeypatch.setattr("bitrix24_docs_etl.storage.DATA_DIR", tmp_path)
-    monkeypatch.setattr("bitrix24_docs_etl.storage.RAW_DIR", tmp_path / "raw")
-    monkeypatch.setattr("bitrix24_docs_etl.storage.RAW_META_DIR", tmp_path / "raw" / "meta")
-    monkeypatch.setattr("bitrix24_docs_etl.storage.PROCESSED_DIR", tmp_path / "processed")
-    monkeypatch.setattr("bitrix24_docs_etl.storage.PROCESSED_MARKDOWN_DIR", tmp_path / "processed" / "markdown")
-    monkeypatch.setattr("bitrix24_docs_etl.storage.PROCESSED_META_DIR", tmp_path / "processed" / "meta")
-    monkeypatch.setattr("bitrix24_docs_etl.storage.INDEX_DIR", tmp_path / "index")
-    ensure_dirs()
-    yield
 
 
 def write_processed(slug: str, title: str, content: str) -> None:
@@ -43,7 +25,6 @@ def write_processed(slug: str, title: str, content: str) -> None:
 
 
 def test_build_simple_index_generates_expected_entries(tmp_path):
-    importlib.reload(storage)
     write_processed("crm_lead", "CRM Lead", "Lead documentation body")
     write_processed("crm_deal", "CRM Deal", "Deal documentation body")
 
