@@ -1,39 +1,53 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
+
+vi.mock('./github.js', () => ({
+  searchGithubDocs: vi.fn(),
+  fetchGithubDocument: vi.fn(),
+}));
 
 import { createMcpServer } from './index.js';
+import { searchGithubDocs, fetchGithubDocument } from './github.js';
 
-describe('createMcpServer', () => {
-  const sampleDocs = [
-    {
-      slug: 'crm_lead',
-      url: 'https://apidocs.bitrix24.ru/crm_lead',
-      title: 'CRM Lead',
-      markdown_path: 'processed/markdown/crm_lead.md',
-      retrieved_at: '2025-01-01T00:00:00Z',
-      text_preview: 'lead preview',
-    },
-    {
-      slug: 'crm_deal',
-      url: 'https://apidocs.bitrix24.ru/crm_deal',
-      title: 'CRM Deal',
-      markdown_path: 'processed/markdown/crm_deal.md',
-      retrieved_at: '2025-01-01T00:00:00Z',
-      text_preview: 'deal preview',
-    },
-  ];
+describe('createMcpServer tools', () => {
+  it('calls searchGithubDocs and formats the response', async () => {
+    (searchGithubDocs as unknown as Mock).mockResolvedValue([
+      {
+        title: 'Документ 1',
+        path: 'api/doc1.md',
+        htmlUrl: 'https://github.com/path/doc1',
+        snippet: 'Сниппет 1',
+        score: 10,
+      },
+    ]);
 
-  const stubIndex = {
-    getEntries: () => sampleDocs,
-    search: () => [],
-    getMarkdown: async () => '# mock',
-    getBySlugOrUrl: () => sampleDocs[0],
-  } as const;
+    const server = createMcpServer();
+    const tool = (server as any)._registeredTools?.bitrix_docs_search;
+    expect(tool).toBeDefined();
 
-  it('registers resources for each document entry', () => {
-    const server = createMcpServer(stubIndex);
-    const registeredResources = Object.keys((server as any)._registeredResources ?? {});
+    const result = await tool.callback({ query: 'catalog', limit: 1 }, {});
 
-    expect(registeredResources).toContain('bitrix24-docs://docs/crm_lead');
-    expect(registeredResources).toContain('bitrix24-docs://docs/crm_deal');
+    expect(searchGithubDocs).toHaveBeenCalledWith('catalog', 1, expect.any(String));
+    expect(result.content[0].text).toContain('Документ 1');
+    expect(result.content[0].text).toContain('https://github.com/path/doc1');
+  });
+
+  it('fetches document content via fetchGithubDocument', async () => {
+    (fetchGithubDocument as unknown as Mock).mockResolvedValue({
+      title: 'Документ',
+      path: 'api/doc.md',
+      htmlUrl: 'https://github.com/path/doc',
+      content: '# Заголовок\nТекст',
+    });
+
+    const server = createMcpServer();
+    const tool = (server as any)._registeredTools?.bitrix_docs_fetch;
+    expect(tool).toBeDefined();
+
+    const result = await tool.callback({ slug: 'api/doc.md' }, {});
+
+    expect(fetchGithubDocument).toHaveBeenCalledWith('api/doc.md');
+    expect(result.content[0].text).toContain('# Заголовок');
+    expect(result.content[0].text).toContain('https://github.com/path/doc');
   });
 });

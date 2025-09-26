@@ -166,7 +166,7 @@ def pipeline_command(
 @click.option(
     "--repo",
     "repo_url",
-    default="https://github.com/bitrix-tools/b24-rest-docs",
+    default="https://github.com/bitrix24/b24restdocs",
     show_default=True,
     help="URL репозитория с документацией",
 )

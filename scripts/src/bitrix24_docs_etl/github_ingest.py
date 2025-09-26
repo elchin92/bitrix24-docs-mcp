@@ -17,7 +17,7 @@ from .storage import (
     DATA_DIR,
 )
 
-GITHUB_REPO_DEFAULT = "https://github.com/bitrix-tools/b24-rest-docs"
+GITHUB_REPO_DEFAULT = "https://github.com/bitrix24/b24restdocs"
 
 
 @dataclass(slots=True)
@@ -109,4 +109,3 @@ def _extract_title(markdown: str, fallback: str) -> str:
         if line.startswith("#"):
             return line.lstrip("# ").strip() or fallback
     return fallback
-
